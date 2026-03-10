@@ -46,6 +46,10 @@
             pointer-events: none;
             display: none;
         }
+
+        #inapp-warning {
+            font-size: 11px;
+        }
         
         #modal-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 30; background: rgba(255, 255, 255, 0.5); display: none; align-items: center; justify-content: center; backdrop-filter: blur(12px); padding: 1rem; box-sizing: border-box; }
 
@@ -188,6 +192,16 @@
         <button onclick="startIntro()" class="px-8 py-3.5 bg-gradient-gold text-white rounded-full font-semibold shadow-[0_10px_20px_rgba(245,158,11,0.3)] hover:scale-105 active:scale-95 transition-all flex items-center gap-2 text-sm tracking-wider uppercase">
             <i data-lucide="sparkles" class="w-4 h-4"></i> Khám phá ngay
         </button>
+    </div>
+
+    <!-- Thông báo riêng cho trình duyệt trong app (Messenger, v.v.) -->
+    <div id="inapp-warning" class="hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-[70] px-4 py-2 rounded-2xl bg-slate-900/95 text-white text-[11px] md:text-xs shadow-lg border border-amber-400/60 flex items-center gap-2 max-w-[360px] text-left">
+        <i data-lucide="info" class="w-3.5 h-3.5 text-amber-300 shrink-0"></i>
+        <span>
+            Bạn đang mở thiệp trong <strong>Messenger</strong>.
+            Hãy bấm dấu ba chấm ở góc trên bên phải &rarr; chọn
+            <strong>“Mở bằng trình duyệt”</strong> để lát nữa tải thẻ dễ hơn nhé.
+        </span>
     </div>
 
     <div id="transition-overlay"></div>
@@ -442,6 +456,13 @@
                 if (elCardName) elCardName.textContent = guestName;
                 if (elIntroName) elIntroName.textContent = "Gửi " + guestName;
                 if (elTicketName) elTicketName.textContent = guestName;
+            }
+
+            // Nếu đang ở trình duyệt trong app (Messenger, Facebook, v.v.) thì hiện cảnh báo nhỏ
+            const inAppBar = document.getElementById('inapp-warning');
+            if (inAppBar && isMessengerBrowser()) {
+                inAppBar.classList.remove('hidden');
+                lucide.createIcons();
             }
         });
 
@@ -769,6 +790,11 @@
             return /fban|fbav|instagram|messenger|line|zalo/.test(ua);
         }
 
+        function isMessengerBrowser() {
+            const ua = (navigator.userAgent || '').toLowerCase();
+            return /fbav|fban|messenger/.test(ua);
+        }
+
         function downloadTicket() {
             const wrapperElement = document.getElementById('ticket-export-area');
             const btnObj = document.getElementById('btn-download');
@@ -785,7 +811,15 @@
             }).then(canvas => {
                 const dataUrl = canvas.toDataURL('image/png');
 
-                if (isInAppBrowser()) {
+                if (isMessengerBrowser()) {
+                    // Messenger thường chặn tải trực tiếp: mở ảnh ra tab mới và giải thích rõ ràng
+                    try {
+                        window.open(dataUrl, '_blank');
+                        showToast('<i data-lucide="info" class="w-5 h-5 text-amber-300"></i> Messenger không hỗ trợ tải trực tiếp. Trong tab mới, hãy giữ vào ảnh để lưu, hoặc bấm dấu ba chấm &rarr; Open in Chrome rồi tải lại.');
+                    } catch {
+                        showToast('<i data-lucide="info" class="w-5 h-5 text-amber-300"></i> Messenger đang chặn tải. Hãy bấm dấu ba chấm &rarr; Open in Chrome/Safari rồi mở lại thiệp để tải thẻ nhé.');
+                    }
+                } else if (isInAppBrowser()) {
                     // Một số trình duyệt trong app (Messenger, Instagram, Zalo, ...) chặn download trực tiếp.
                     // Mở tab mới với ảnh để người dùng giữ/long-press và lưu thủ công.
                     try {
@@ -867,9 +901,10 @@
                         _canOpenScroll = false;
                         _idleBaseY = scrollGroup.position.y;
                         _idleBaseRotY = scrollGroup.rotation.y;
-                        gsap.to('#ui-layer', { opacity: 1, duration: 1.0, delay: 0.5 });
                         // Tổng thời gian: ~3s animation + 4s chờ = ~7s trước khi cho bấm
                         gsap.delayedCall(4, () => {
+                            // Đến lúc này mới hiện chữ "Chạm vào cuộn giấy để mở"
+                            gsap.to('#ui-layer', { opacity: 1, duration: 1.0 });
                             _canOpenScroll = true;
                         });
                     }
