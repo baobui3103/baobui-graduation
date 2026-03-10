@@ -455,6 +455,8 @@
         let isAnimatingPage = false;
         let autoScrollTimer = null;
         let hintHideTimer = null;
+        const RSVP_PAGE_INDEX = 3;
+        let hasAcceptedInvite = false;
 
         let _exploreAudioPlayed = false;
         let _audioCtx = null;
@@ -517,8 +519,23 @@
             if(currentPage === 0) { btnPrev.style.opacity = '0'; btnPrev.style.pointerEvents = 'none'; } 
             else { btnPrev.style.opacity = '1'; btnPrev.style.pointerEvents = 'auto'; }
 
-            if (currentPage === pages.length - 1) { btnNext.style.opacity = '0'; btnNext.style.pointerEvents = 'none'; } 
-            else { btnNext.style.opacity = '1'; btnNext.style.pointerEvents = 'auto'; }
+            // Mặc định: hiện nút "Tiếp tục" trừ khi ở trang cuối
+            if (currentPage === pages.length - 1) {
+                btnNext.style.opacity = '0';
+                btnNext.style.pointerEvents = 'none';
+                btnNext.disabled = true;
+            } else {
+                btnNext.style.opacity = '1';
+                btnNext.disabled = false;
+                btnNext.style.pointerEvents = 'auto';
+
+                // Nếu đang ở trang hỏi "Bạn sẽ đến chứ?" và chưa bấm Đồng ý thì khóa nút
+                if (currentPage === RSVP_PAGE_INDEX && !hasAcceptedInvite) {
+                    btnNext.style.opacity = '0.4';
+                    btnNext.style.pointerEvents = 'none';
+                    btnNext.disabled = true;
+                }
+            }
 
             dots.forEach((dot, index) => {
                 if (index === currentPage) { dot.className = 'w-6 h-1.5 rounded-full bg-gradient-gold shadow-sm transition-all duration-300'; } 
@@ -643,6 +660,8 @@
 
         function handleYes() {
             const q1 = document.getElementById('question-1'); const q2 = document.getElementById('question-2');
+            hasAcceptedInvite = true;
+            updateNavState();
             gsap.to(q1, { opacity: 0, scale: 0.95, duration: 0.3, onComplete: () => { q1.style.display = 'none'; q2.style.display = 'flex'; q2.classList.add('fade-in'); } });
         }
 
