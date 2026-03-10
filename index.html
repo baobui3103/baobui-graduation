@@ -36,6 +36,15 @@
         #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; }
         
         #flash-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #ffffff; box-shadow: inset 0 0 150px #fef08a; z-index: 40; opacity: 0; pointer-events: none; }
+
+        #transition-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #fffdf9;
+            z-index: 60;
+            opacity: 0;
+            pointer-events: none;
+            display: none;
+        }
         
         #modal-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 30; background: rgba(255, 255, 255, 0.5); display: none; align-items: center; justify-content: center; backdrop-filter: blur(12px); padding: 1rem; box-sizing: border-box; }
 
@@ -164,6 +173,8 @@
             <i data-lucide="sparkles" class="w-4 h-4"></i> Khám phá ngay
         </button>
     </div>
+
+    <div id="transition-overlay"></div>
 
     <div id="canvas-container"></div>
     <div id="ui-layer"><div id="instruction" class="instruction uppercase font-bold text-center font-sans tracking-widest text-sm text-slate-700">Chạm vào cuộn giấy để mở</div></div>
@@ -394,13 +405,33 @@
         lucide.createIcons();
 
         document.addEventListener('DOMContentLoaded', () => {
-            const urlParams = new URLSearchParams(window.location.search);
-            const guestName = urlParams.get('name') || urlParams.get('guest');
+            const guestName = getGuestNameFromUrl();
             if (guestName) {
-                document.getElementById('guest-name-display').textContent = guestName;
-                document.getElementById('intro-guest-name').textContent = "Gửi " + guestName;
+                const elCardName = document.getElementById('guest-name-display');
+                const elIntroName = document.getElementById('intro-guest-name');
+                if (elCardName) elCardName.textContent = guestName;
+                if (elIntroName) elIntroName.textContent = "Gửi " + guestName;
             }
         });
+
+        function getGuestNameFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const raw =
+                urlParams.get('name') ||
+                urlParams.get('guest') ||
+                urlParams.get('ten') ||
+                urlParams.get('fullname') ||
+                urlParams.get('fullName');
+            if (!raw) return '';
+
+            // URLSearchParams thường đã decode, nhưng vẫn xử lý trường hợp dùng '+' thay cho space
+            const plusFixed = raw.replace(/\+/g, ' ');
+            try {
+                return decodeURIComponent(plusFixed).trim();
+            } catch {
+                return plusFixed.trim();
+            }
+        }
 
         let currentPage = 0;
         const pages = document.querySelectorAll('.page');
@@ -572,16 +603,40 @@
         }
 
         let isOpened = false;
+        let _introStarted = false;
 
         function startIntro() {
+            if (_introStarted) return;
+            _introStarted = true;
             playExploreAudio();
             const overlay = document.getElementById('intro-overlay');
-            gsap.to(overlay, { opacity: 0, duration: 0.8, onComplete: () => { overlay.style.display = 'none'; } });
-            
-            // Xóa bỏ animParams, thay bằng điều khiển trục Y trực tiếp
-            gsap.fromTo(scrollGroup.position, {y: 12}, { y: 0, duration: 2.2, ease: "bounce.out" });
-            gsap.fromTo(scrollGroup.rotation, { x: Math.PI, z: -Math.PI / 2 }, { x: Math.PI / 5, z: Math.PI / 8, duration: 2.5, ease: "power3.out" });
-            gsap.to('#ui-layer', { opacity: 1, duration: 1, delay: 2 });
+            overlay.style.pointerEvents = 'none';
+
+            // Dùng 1 lớp phủ chuyển cảnh để tránh bị "blank" do fade toàn trang
+            const transition = document.getElementById('transition-overlay');
+            transition.style.display = 'block';
+            transition.style.opacity = '0';
+
+            const tl = gsap.timeline({
+                defaults: { ease: "power2.inOut" },
+                onComplete: () => {
+                    transition.style.display = 'none';
+                }
+            });
+
+            // Mờ dần (trắng) trong 1s
+            tl.to(transition, { opacity: 1, duration: 1 });
+            // Ẩn intro khi màn hình đã mờ xong
+            tl.add(() => { overlay.style.display = 'none'; }, ">");
+            // Mở lại để thấy canvas + cuộn giấy
+            tl.to(transition, { opacity: 0, duration: 0.7 }, ">");
+
+            // Bắt đầu animation cuộn giấy ngay sau khi intro biến mất
+            tl.add(() => {
+                gsap.fromTo(scrollGroup.position, { y: 12 }, { y: 0, duration: 2.2, ease: "bounce.out" });
+                gsap.fromTo(scrollGroup.rotation, { x: Math.PI, z: -Math.PI / 2 }, { x: Math.PI / 5, z: Math.PI / 8, duration: 2.5, ease: "power3.out" });
+                gsap.to('#ui-layer', { opacity: 1, duration: 1, delay: 2 });
+            }, "<");
         }
 
         // Tỉ lệ Canvas được thiết kế lại gọn hơn để khớp với độ dài cuộn giấy mới (8.0)
