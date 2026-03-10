@@ -124,6 +124,8 @@
             color: white;
             display: flex; justify-content: space-between; align-items: center;
         }
+        .ticket-header-title { line-height: 1; }
+        .ticket-header-badge { line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
 
         /* Phân cách và 2 lỗ đục giả lập */
         .ticket-divider-wrapper {
@@ -310,11 +312,11 @@
                         <!-- THẺ VIP TICKET CHUẨN (KHÔNG LỖI CANVAS) -->
                         <div class="vip-ticket">
                             <div class="ticket-header">
-                                <div class="flex items-center gap-2">
+                                <div class="flex items-center gap-2 ticket-header-title">
                                     <i data-lucide="award" class="w-5 h-5 text-amber-100"></i>
                                     <span class="font-bold tracking-widest text-sm">VIP TICKET</span>
                                 </div>
-                                <span class="text-[10px] font-black uppercase bg-white/20 px-3 py-1 rounded-lg tracking-wider">Pass</span>
+                                <span class="ticket-header-badge text-[10px] font-black uppercase bg-white/20 px-3 py-1 rounded-lg tracking-wider">Pass</span>
                             </div>
                             
                             <!-- Đường nét đứt và 2 lỗ đục giả lập bằng pseudo elements -->
@@ -482,6 +484,27 @@
             playExploreSynthFallback();
         }
 
+        function stopExploreAudio() {
+            // Dừng thẻ <audio>
+            const el = document.getElementById('explore-audio');
+            if (el && !el.paused) {
+                try {
+                    el.pause();
+                    el.currentTime = 0;
+                } catch (e) {}
+            }
+
+            // Dừng Web Audio fallback nếu còn
+            if (_audioCtx) {
+                try {
+                    _audioCtx.close();
+                } catch (e) {}
+                _audioCtx = null;
+            }
+
+            _exploreAudioPlayed = false;
+        }
+
         function playExploreSynthFallback() {
             const AudioCtx = window.AudioContext || window.webkitAudioContext;
             if (!AudioCtx) return;
@@ -507,6 +530,13 @@
             osc.start(now);
             osc.stop(now + 1.25);
         }
+
+        // Khi rời trang / reload, đảm bảo tắt nhạc
+        window.addEventListener('beforeunload', stopExploreAudio);
+        window.addEventListener('pagehide', stopExploreAudio);
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) stopExploreAudio();
+        });
 
         pages.forEach((page, i) => { if (i !== 0) gsap.set(page, { opacity: 0, x: 50, display: 'none' }); });
         updateNavState();
@@ -720,6 +750,11 @@
             setTimeout(() => { changePage(1); }, 2000); 
         }
 
+        function isInAppBrowser() {
+            const ua = (navigator.userAgent || '').toLowerCase();
+            return /fban|fbav|instagram|messenger|line|zalo/.test(ua);
+        }
+
         function downloadTicket() {
             const wrapperElement = document.getElementById('ticket-export-area');
             const btnObj = document.getElementById('btn-download');
@@ -734,12 +769,32 @@
                 logging: false,
                 useCORS: true
             }).then(canvas => {
-                const link = document.createElement('a'); link.download = 'The_Tham_Du_Tot_Nghiep.png'; link.href = canvas.toDataURL('image/png'); link.click();
-                showToast('<i data-lucide="check-circle" class="w-5 h-5 text-emerald-400"></i> Đã tải ảnh thành công!');
+                const dataUrl = canvas.toDataURL('image/png');
+
+                if (isInAppBrowser()) {
+                    // Một số trình duyệt trong app (Messenger, Instagram, Zalo, ...) chặn download trực tiếp.
+                    // Mở tab mới với ảnh để người dùng giữ/long-press và lưu thủ công.
+                    try {
+                        window.open(dataUrl, '_blank');
+                        showToast('<i data-lucide="info" class="w-5 h-5 text-amber-300"></i> Nếu không tự tải, hãy mở trong trình duyệt ngoài hoặc giữ ảnh trong tab mới để lưu.');
+                    } catch {
+                        showToast('<i data-lucide="info" class="w-5 h-5 text-amber-300"></i> Trình duyệt trong app đang chặn tải. Hãy mở link này bằng Chrome/Safari rồi thử lại nhé.');
+                    }
+                } else {
+                    const link = document.createElement('a');
+                    link.download = 'The_Tham_Du_Tot_Nghiep.png';
+                    link.href = dataUrl;
+                    link.target = '_blank';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    showToast('<i data-lucide="check-circle" class="w-5 h-5 text-emerald-400"></i> Đã tải ảnh thành công!');
+                }
+
                 btnObj.innerHTML = '<i data-lucide="check" class="w-5 h-5"></i> Đã tải xong!';
                 lucide.createIcons(); setTimeout(() => { btnObj.innerHTML = originalHTML; lucide.createIcons(); }, 3000);
             }).catch(() => {
-                showToast('<i data-lucide="x-circle" class="w-5 h-5 text-rose-400"></i> Có lỗi xảy ra, thử lại sau nhé!');
+                showToast('<i data-lucide="x-circle" class="w-5 h-5 text-rose-400"></i> Tải ảnh bị chặn. Hãy mở thiệp bằng Chrome/Safari rồi bấm tải lại nhé!');
                 btnObj.innerHTML = originalHTML; lucide.createIcons();
             });
         }
