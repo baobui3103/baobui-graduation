@@ -7,6 +7,7 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <!-- Bộ Font hỗ trợ Tiếng Việt chuẩn (NFC) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -120,12 +121,25 @@
 
         .ticket-header {
             background: linear-gradient(135deg, #b45309, #d97706);
-            padding: 16px 20px;
+            padding: 14px 20px;
             color: white;
-            display: flex; justify-content: space-between; align-items: center;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        .ticket-header-title { line-height: 1; }
-        .ticket-header-badge { line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
+        .ticket-header-title {
+            line-height: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .ticket-header-badge {
+            line-height: 1;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px 14px; /* ghi đè px-3 py-1 */
+        }
 
         /* Phân cách và 2 lỗ đục giả lập */
         .ticket-divider-wrapper {
@@ -807,6 +821,7 @@
         let isOpened = false;
         let _introStarted = false;
         let _canOpenScroll = false;
+        let _hasScrollLanded = false;
         let _idleBaseY = 0;
         let _idleBaseRotY = 0;
 
@@ -843,10 +858,12 @@
                 scrollGroup.rotation.set(Math.PI * 0.95, 0, -Math.PI / 1.6);
                 scrollGroup.scale.set(0.85, 0.85, 0.85);
                 _canOpenScroll = false;
+                _hasScrollLanded = false;
 
                 const tlScroll = gsap.timeline({
                     onComplete: () => {
-                        // Sau khi cuộn thư "hạ cánh" xong, vẫn chờ thêm để người xem ngắm
+                        // Sau khi cuộn thư "hạ cánh" xong: cho lắc nhẹ liên tục, nhưng vẫn chưa cho bấm
+                        _hasScrollLanded = true;
                         _canOpenScroll = false;
                         _idleBaseY = scrollGroup.position.y;
                         _idleBaseRotY = scrollGroup.rotation.y;
@@ -858,39 +875,66 @@
                     }
                 });
 
-                // Rơi chậm từ trên xuống, tiến dần về phía trước
+                // 1) Rơi chéo từ trên xuống, lệch sang trái
                 tlScroll.to(scrollGroup.position, {
+                    y: 1.6,
+                    z: -1.0,
+                    x: -1.2,
+                    duration: 1.6,
+                    ease: "power3.out"
+                }, 0);
+
+                tlScroll.to(scrollGroup.rotation, {
+                    x: Math.PI * 0.8,
+                    z: -Math.PI / 4,
+                    y: -0.4,
+                    duration: 1.6,
+                    ease: "power3.out"
+                }, 0);
+
+                // 2) Lượn vòng sang phải và tiến gần camera
+                tlScroll.to(scrollGroup.position, {
+                    x: 1.0,
+                    y: 0.6,
+                    z: -0.7,
+                    duration: 1.4,
+                    ease: "power2.inOut"
+                }, "+=0.1");
+
+                tlScroll.to(scrollGroup.rotation, {
+                    x: Math.PI / 4,
+                    z: Math.PI / 6,
+                    y: 0.6,
+                    duration: 1.4,
+                    ease: "power2.inOut"
+                }, "-=1.4");
+
+                // 3) Trượt về giữa màn hình và "phanh" lại
+                tlScroll.to(scrollGroup.position, {
+                    x: 0,
                     y: 0.4,
                     z: -0.6,
-                    duration: 2.4,
-                    ease: "power3.out"
-                }, 0);
+                    duration: 0.9,
+                    ease: "back.out(1.4)"
+                }, "+=0.1");
 
-                // Xoay nhẹ + nảy lại cho cảm giác 3D mềm
-                tlScroll.to(scrollGroup.rotation, {
-                    x: Math.PI / 5,
-                    z: Math.PI / 6,
-                    duration: 2.4,
-                    ease: "power3.out"
-                }, 0);
-
-                // Phóng to dần khi tiến gần camera
+                // Phóng to nhẹ khi dừng
                 tlScroll.to(scrollGroup.scale, {
                     x: 1,
                     y: 1,
                     z: 1,
-                    duration: 2.0,
+                    duration: 0.9,
                     ease: "power2.out"
-                }, 0.2);
+                }, "-=0.7");
 
                 // Một nhịp lắc nhỏ cuối cùng
                 tlScroll.to(scrollGroup.rotation, {
-                    z: Math.PI / 8,
+                    z: Math.PI / 10,
                     duration: 0.8,
                     ease: "sine.inOut",
                     yoyo: true,
                     repeat: 1
-                }, "-=0.6");
+                }, "-=0.5");
             }, "<");
         }
 
@@ -975,8 +1019,8 @@
         function animate() { 
             requestAnimationFrame(animate); 
             if (!isOpened || document.getElementById('canvas-container').style.display !== 'none') { 
-                // Hiệu ứng đung đưa nhẹ sau khi thư đã hạ cánh và sẵn sàng được bấm
-                if (!isOpened && _canOpenScroll) { 
+                // Hiệu ứng đung đưa nhẹ sau khi thư đã hạ cánh (xuyên suốt cả thời gian chờ 7s)
+                if (!isOpened && _hasScrollLanded) { 
                     floatTime += 0.02; 
                     const bobY = Math.sin(floatTime) * 0.15; 
                     const tiltY = Math.sin(floatTime * 0.6) * 0.12; 
