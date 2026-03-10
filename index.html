@@ -408,6 +408,10 @@
     <audio id="explore-audio" preload="auto" src="assets/song.mp3"></audio>
 
     <script>
+        // TODO: thay bằng URL Web App của Google Apps Script (đã triển khai)
+        // Ví dụ: 'https://script.google.com/macros/s/AKfycbx.../exec'
+        const GOOGLE_SHEET_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbz073GvmAI89tSttj5HYJ70uGX526L29wviP4j3w7dgmCz8Ohn0dA8NI_t7_5ipIUqh/exec';
+
         lucide.createIcons();
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -416,6 +420,9 @@
                 const elCardName = document.getElementById('guest-name-display');
                 const elIntroName = document.getElementById('intro-guest-name');
                 const elTicketName = document.getElementById('ticket-guest-name');
+
+                window.__guestName = guestName;
+
                 if (elCardName) elCardName.textContent = guestName;
                 if (elIntroName) elIntroName.textContent = "Gửi " + guestName;
                 if (elTicketName) elTicketName.textContent = guestName;
@@ -645,9 +652,49 @@
             document.getElementById('wish-form').classList.add('fade-in');
         }
 
-        function sendWish() {
-            const input = document.getElementById('wish-input').value;
-            if(!input.trim()) return;
+        async function sendWish() {
+            const textarea = document.getElementById('wish-input');
+            const wish = textarea.value.trim();
+            if (!wish) return;
+
+            const btn = textarea.closest('#wish-form')?.querySelector('button');
+            const originalBtnHTML = btn ? btn.innerHTML : null;
+            if (btn) {
+                btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Đang gửi...';
+                btn.disabled = true;
+                lucide.createIcons();
+            }
+
+            const payload = {
+                name: window.__guestName || getGuestNameFromUrl() || 'Khách mời',
+                wish,
+                submittedAt: new Date().toISOString(),
+                pageUrl: window.location.href
+            };
+
+            const hasValidScriptUrl = GOOGLE_SHEET_WEBAPP_URL && !GOOGLE_SHEET_WEBAPP_URL.includes('REPLACE_ME_WITH_YOUR_ID');
+
+            if (hasValidScriptUrl && window.fetch) {
+                try {
+                    await fetch(GOOGLE_SHEET_WEBAPP_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                } catch (err) {
+                    console.error('Gửi lời chúc tới Google Sheets lỗi:', err);
+                }
+            }
+
+            if (btn && originalBtnHTML) {
+                btn.innerHTML = originalBtnHTML;
+                btn.disabled = false;
+                lucide.createIcons();
+            }
+
             document.getElementById('wish-form').style.display = 'none';
             document.getElementById('wish-success').style.display = 'flex';
             document.getElementById('wish-success').classList.add('fade-in');
