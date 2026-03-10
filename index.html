@@ -806,6 +806,9 @@
 
         let isOpened = false;
         let _introStarted = false;
+        let _canOpenScroll = false;
+        let _idleBaseY = 0;
+        let _idleBaseRotY = 0;
 
         function startIntro() {
             if (_introStarted) return;
@@ -835,9 +838,59 @@
 
             // Bắt đầu animation cuộn giấy ngay sau khi intro biến mất
             tl.add(() => {
-                gsap.fromTo(scrollGroup.position, { y: 12 }, { y: 0, duration: 2.2, ease: "bounce.out" });
-                gsap.fromTo(scrollGroup.rotation, { x: Math.PI, z: -Math.PI / 2 }, { x: Math.PI / 5, z: Math.PI / 8, duration: 2.5, ease: "power3.out" });
-                gsap.to('#ui-layer', { opacity: 1, duration: 1, delay: 2 });
+                // Đặt lại trạng thái ban đầu của cuộn thư
+                scrollGroup.position.set(0, 10, -4);
+                scrollGroup.rotation.set(Math.PI * 0.95, 0, -Math.PI / 1.6);
+                scrollGroup.scale.set(0.85, 0.85, 0.85);
+                _canOpenScroll = false;
+
+                const tlScroll = gsap.timeline({
+                    onComplete: () => {
+                        // Sau khi cuộn thư "hạ cánh" xong, vẫn chờ thêm để người xem ngắm
+                        _canOpenScroll = false;
+                        _idleBaseY = scrollGroup.position.y;
+                        _idleBaseRotY = scrollGroup.rotation.y;
+                        gsap.to('#ui-layer', { opacity: 1, duration: 1.0, delay: 0.5 });
+                        // Tổng thời gian: ~3s animation + 4s chờ = ~7s trước khi cho bấm
+                        gsap.delayedCall(4, () => {
+                            _canOpenScroll = true;
+                        });
+                    }
+                });
+
+                // Rơi chậm từ trên xuống, tiến dần về phía trước
+                tlScroll.to(scrollGroup.position, {
+                    y: 0.4,
+                    z: -0.6,
+                    duration: 2.4,
+                    ease: "power3.out"
+                }, 0);
+
+                // Xoay nhẹ + nảy lại cho cảm giác 3D mềm
+                tlScroll.to(scrollGroup.rotation, {
+                    x: Math.PI / 5,
+                    z: Math.PI / 6,
+                    duration: 2.4,
+                    ease: "power3.out"
+                }, 0);
+
+                // Phóng to dần khi tiến gần camera
+                tlScroll.to(scrollGroup.scale, {
+                    x: 1,
+                    y: 1,
+                    z: 1,
+                    duration: 2.0,
+                    ease: "power2.out"
+                }, 0.2);
+
+                // Một nhịp lắc nhỏ cuối cùng
+                tlScroll.to(scrollGroup.rotation, {
+                    z: Math.PI / 8,
+                    duration: 0.8,
+                    ease: "sine.inOut",
+                    yoyo: true,
+                    repeat: 1
+                }, "-=0.6");
             }, "<");
         }
 
@@ -889,7 +942,7 @@
         const raycaster = new THREE.Raycaster(); const mouse = new THREE.Vector2(); let floatTime = 0;
         
         function handleInteraction(event) { 
-            if (isOpened) return; 
+            if (isOpened || !_canOpenScroll) return; 
             let cX, cY;
             if (event.type === 'touchstart' || event.type === 'touchend') {
                 if(event.changedTouches && event.changedTouches.length > 0) { cX = event.changedTouches[0].clientX; cY = event.changedTouches[0].clientY; } else { return; }
@@ -922,12 +975,13 @@
         function animate() { 
             requestAnimationFrame(animate); 
             if (!isOpened || document.getElementById('canvas-container').style.display !== 'none') { 
-                if (!isOpened) { 
+                // Hiệu ứng đung đưa nhẹ sau khi thư đã hạ cánh và sẵn sàng được bấm
+                if (!isOpened && _canOpenScroll) { 
                     floatTime += 0.02; 
-                    if (scrollGroup.position.y < 1) { 
-                        scrollGroup.position.y = Math.sin(floatTime) * 0.2; 
-                        scrollGroup.rotation.y = Math.sin(floatTime * 0.5) * 0.1; 
-                    }
+                    const bobY = Math.sin(floatTime) * 0.15; 
+                    const tiltY = Math.sin(floatTime * 0.6) * 0.12; 
+                    scrollGroup.position.y = _idleBaseY + bobY; 
+                    scrollGroup.rotation.y = _idleBaseRotY + tiltY; 
                 }
                 renderer.render(scene, camera); 
             } 
