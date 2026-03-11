@@ -207,7 +207,7 @@
     <div id="inapp-warning" class="hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-[70] px-4 py-2 rounded-2xl bg-slate-900/95 text-white text-[11px] md:text-xs shadow-lg border border-amber-400/60 flex items-center gap-2 max-w-[360px] text-left">
         <i data-lucide="info" class="w-3.5 h-3.5 text-amber-300 shrink-0"></i>
         <span>
-            Bạn đang mở thiệp trong <strong>Messenger</strong>. Ứng dụng này có thể <strong>không tải được thẻ</strong>.
+            Bạn đang sử dụng <strong>trình duyệt của ứng dụng</strong>. Có thể <strong>không tải được thẻ</strong>.
             Để trải nghiệm mượt mà hơn, hãy bấm dấu ba chấm ở góc trên bên phải &rarr; chọn
             <strong>“Mở bằng trình duyệt (Chrome/Safari)”</strong> rồi mở lại thiệp nhé.
         </span>
@@ -888,13 +888,11 @@
             const overlay = document.getElementById('intro-overlay');
             overlay.style.pointerEvents = 'none';
 
-            // Nếu đang trong Messenger, khi bắt đầu khám phá thì ẩn banner/arrow hướng dẫn để giao diện gọn hơn
-            if (isMessengerBrowser()) {
-                const inAppBar = document.getElementById('inapp-warning');
-                const inAppArrow = document.getElementById('inapp-arrow');
-                if (inAppBar) inAppBar.classList.add('hidden');
-                if (inAppArrow) inAppArrow.classList.add('hidden');
-            }
+            // Khi bấm Khám phá ngay thì luôn ẩn banner + mũi tên hướng dẫn (dù đang ở Messenger hay in-app browser khác)
+            const inAppBar = document.getElementById('inapp-warning');
+            const inAppArrow = document.getElementById('inapp-arrow');
+            if (inAppBar) inAppBar.classList.add('hidden');
+            if (inAppArrow) inAppArrow.classList.add('hidden');
 
             // Dùng 1 lớp phủ chuyển cảnh để tránh bị "blank" do fade toàn trang
             const transition = document.getElementById('transition-overlay');
