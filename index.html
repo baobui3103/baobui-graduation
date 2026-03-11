@@ -7,7 +7,7 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+    <link rel="icon" type="image/svg+xml" href="./assets/icon.ico">
     <!-- Bộ Font hỗ trợ Tiếng Việt chuẩn (NFC) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -81,15 +81,18 @@
             box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05);
         }
 
-        #pages-wrapper { position: relative; flex-grow: 1; overflow-x: hidden; overflow-y: auto; scroll-behavior: smooth; background: transparent; z-index: 10; }
+        #pages-wrapper {
+            position: relative; flex-grow: 1; overflow: hidden; overflow-y: auto;
+            scroll-behavior: smooth; background: transparent; z-index: 10;
+        }
         #pages-wrapper::-webkit-scrollbar { display: none; }
         #pages-wrapper { -ms-overflow-style: none; scrollbar-width: none; }
 
         .page {
             position: absolute; top: 0; left: 0; width: 100%; min-height: 100%;
-            display: flex; flex-direction: column; 
-            opacity: 0; pointer-events: none;
+            display: flex; flex-direction: column;
             padding: 28px 24px 90px 24px; box-sizing: border-box;
+            opacity: 0; pointer-events: none;
         }
         .page.active { opacity: 1; pointer-events: auto; }
 
@@ -132,26 +135,39 @@
             overflow: hidden; 
         }
 
+        /* Header vé: flex + inline style để html2canvas xuất ảnh đúng (tránh transform/table) */
         .ticket-header {
             background: linear-gradient(135deg, #b45309, #d97706);
-            padding: 14px 20px;
             color: white;
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            height: 52px;
+            padding: 0 20px;
+            box-sizing: border-box;
         }
         .ticket-header-title {
-            line-height: 1;
             display: flex;
             align-items: center;
             gap: 8px;
+            line-height: 1;
+            font-size: 14px;
+            font-weight: 700;
         }
         .ticket-header-badge {
-            line-height: 1;
-            display: inline-flex;
+            display: flex;
             align-items: center;
             justify-content: center;
-            padding: 6px 14px; /* ghi đè px-3 py-1 */
+            height: 28px;
+            padding: 0 14px;
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: rgba(255,255,255,0.2);
+            border-radius: 8px;
+            line-height: 1;
         }
 
         /* Phân cách và 2 lỗ đục giả lập */
@@ -356,12 +372,12 @@
                     <div id="ticket-export-area" class="ticket-export-area">
                         <!-- THẺ VIP TICKET CHUẨN (KHÔNG LỖI CANVAS) -->
                         <div class="vip-ticket">
-                            <div class="ticket-header">
-                                <div class="flex items-center gap-2 ticket-header-title">
+                            <div class="ticket-header" style="display:flex;align-items:center;justify-content:space-between;height:52px;padding:0 20px;background:linear-gradient(135deg,#b45309,#d97706);color:white;">
+                                <span class="ticket-header-title" style="display:flex;align-items:center;gap:8px;">
                                     <i data-lucide="award" class="w-5 h-5 text-amber-100"></i>
                                     <span class="font-bold tracking-widest text-sm">VIP TICKET</span>
-                                </div>
-                                <span class="ticket-header-badge text-[10px] font-black uppercase bg-white/20 px-3 py-1 rounded-lg tracking-wider">Pass</span>
+                                </span>
+                                <span class="ticket-header-badge" style="display:flex;align-items:center;justify-content:center;height:28px;padding:0 14px;font-size:10px;font-weight:800;background:rgba(255,255,255,0.2);border-radius:8px;">Pass</span>
                             </div>
                             
                             <!-- Đường nét đứt và 2 lỗ đục giả lập bằng pseudo elements -->
@@ -418,7 +434,7 @@
                         </div>
                     </div>
 
-                    <div class="mt-auto text-center w-full max-w-[340px] mx-auto shrink-0 pb-8">
+                    <div class="mt-auto text-center w-full max-w-[340px] mx-auto shrink-0 pb-12">
                         <button id="btn-download" onclick="downloadTicket()" class="w-full bg-slate-900 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2 mb-3 shadow-lg shadow-slate-900/30 active:scale-95 transition-all text-sm border border-slate-700">
                             <i data-lucide="download" class="w-4 h-4 text-amber-400"></i> Tải thẻ sự kiện
                         </button>
@@ -595,7 +611,9 @@
             if (document.hidden) stopExploreAudio();
         });
 
-        pages.forEach((page, i) => { if (i !== 0) gsap.set(page, { opacity: 0, x: 50, display: 'none' }); });
+        pages.forEach((page, i) => {
+            if (i !== 0) gsap.set(page, { opacity: 0, display: 'none' });
+        });
         updateNavState();
 
         function updateNavState() {
@@ -650,23 +668,47 @@
             const nextEl = pages[nextPage];
 
             nextEl.style.display = 'flex';
-            gsap.set(nextEl, { opacity: 0, x: direction > 0 ? 50 : -50, pointerEvents: 'none' });
+            nextEl.style.zIndex = 2;
+            currentEl.style.zIndex = 1;
+
+            const slideOut = direction > 0 ? -120 : 120;
+            const slideIn = direction > 0 ? 120 : -120;
+
+            gsap.set(nextEl, { x: slideIn, opacity: 0, scale: 0.92, pointerEvents: 'none' });
 
             gsap.to(currentEl, {
-                opacity: 0, x: direction > 0 ? -50 : 50, duration: 0.35, ease: "power2.inOut",
-                onComplete: () => { currentEl.style.display = 'none'; currentEl.classList.remove('active'); currentEl.style.pointerEvents = 'none'; }
+                x: slideOut,
+                opacity: 0,
+                scale: 0.94,
+                duration: 0.35,
+                ease: "power2.in",
+                force3D: true,
+                onComplete: () => {
+                    currentEl.style.display = 'none';
+                    currentEl.classList.remove('active');
+                    currentEl.style.pointerEvents = 'none';
+                    gsap.set(currentEl, { x: 0, opacity: 1, scale: 1 });
+                }
             });
 
             gsap.to(nextEl, {
-                opacity: 1, x: 0, duration: 0.45, ease: "power3.out", delay: 0.1,
+                x: 0,
+                opacity: 1,
+                scale: 1,
+                duration: 0.4,
+                delay: 0.06,
+                ease: "power3.out",
+                force3D: true,
                 onComplete: () => {
-                    nextEl.classList.add('active'); nextEl.style.pointerEvents = 'auto'; 
+                    nextEl.classList.add('active');
+                    nextEl.style.pointerEvents = 'auto';
+                    nextEl.style.zIndex = '';
+                    currentEl.style.zIndex = '';
                     currentPage = nextPage;
                     pagesWrapperEl.scrollTo(0, 0);
                     updateNavState();
                     isAnimatingPage = false;
 
-                    // Nếu là trang cuối (vé), tự động cuộn và hiện hint
                     if (currentPage === pages.length - 1) {
                         const hintElInner = document.getElementById('download-hint');
                         autoScrollTimer = setTimeout(() => {
@@ -826,30 +868,37 @@
             lucide.createIcons();
 
             html2canvas(wrapperElement, {
-                scale: window.devicePixelRatio > 1 ? 3 : 2, 
-                backgroundColor: '#fffdf9', 
+                scale: Math.min(window.devicePixelRatio || 2, 3),
+                backgroundColor: '#fffdf9',
                 logging: false,
-                useCORS: true
+                useCORS: true,
+                allowTaint: true,
+                onclone: function(clonedDoc, clonedEl) {
+                    var header = clonedEl.querySelector('.ticket-header');
+                    if (header) {
+                        header.style.cssText = 'display:flex!important;align-items:center!important;justify-content:space-between!important;height:52px!important;padding:0 20px!important;background:linear-gradient(135deg,#b45309,#d97706)!important;color:white!important;box-sizing:border-box!important;';
+                        var title = header.querySelector('.ticket-header-title');
+                        if (title) title.style.cssText = 'display:flex!important;align-items:center!important;gap:8px!important;line-height:1!important;';
+                        var badge = header.querySelector('.ticket-header-badge');
+                        if (badge) badge.style.cssText = 'display:flex!important;align-items:center!important;justify-content:center!important;height:28px!important;padding:0 14px!important;font-size:10px!important;font-weight:800!important;background:rgba(255,255,255,0.2)!important;border-radius:8px!important;line-height:1!important;';
+                    }
+                }
             }).then(canvas => {
                 const dataUrl = canvas.toDataURL('image/png');
 
-                if (isMessengerBrowser()) {
-                    // Messenger thường chặn tải trực tiếp: mở ảnh ra tab mới và giải thích rõ ràng
+                if (isMessengerBrowser() || isInAppBrowser()) {
+                    // Trình duyệt ứng dụng không hỗ trợ tải file — không báo "Đã tải xong", báo rõ lý do và hướng dẫn
                     try {
                         window.open(dataUrl, '_blank');
-                        showToast('<i data-lucide="info" class="w-5 h-5 text-amber-300"></i> Messenger không hỗ trợ tải trực tiếp. Trong tab mới, hãy giữ vào ảnh để lưu, hoặc bấm dấu ba chấm &rarr; Open in Chrome rồi tải lại.');
-                    } catch {
-                        showToast('<i data-lucide="info" class="w-5 h-5 text-amber-300"></i> Messenger đang chặn tải. Hãy bấm dấu ba chấm &rarr; Open in Chrome/Safari rồi mở lại thiệp để tải thẻ nhé.');
-                    }
-                } else if (isInAppBrowser()) {
-                    // Một số trình duyệt trong app (Messenger, Instagram, Zalo, ...) chặn download trực tiếp.
-                    // Mở tab mới với ảnh để người dùng giữ/long-press và lưu thủ công.
-                    try {
-                        window.open(dataUrl, '_blank');
-                        showToast('<i data-lucide="info" class="w-5 h-5 text-amber-300"></i> Nếu không tự tải, hãy mở trong trình duyệt ngoài hoặc giữ ảnh trong tab mới để lưu.');
-                    } catch {
-                        showToast('<i data-lucide="info" class="w-5 h-5 text-amber-300"></i> Trình duyệt trong app đang chặn tải. Hãy mở link này bằng Chrome/Safari rồi thử lại nhé.');
-                    }
+                    } catch (e) {}
+                    const msg = 'Do đang dùng <strong>trình duyệt ứng dụng</strong> nên không tải được. Hãy bấm <strong>dấu ba chấm</strong> ở góc trên bên phải &rarr; chọn <strong>Mở bằng trình duyệt (Chrome/Safari)</strong> rồi mở lại thiệp để tải nhé.';
+                    showToast('<i data-lucide="alert-circle" class="w-5 h-5 text-amber-300"></i> ' + msg);
+                    btnObj.innerHTML = '<i data-lucide="external-link" class="w-5 h-5"></i> Không tải được — mở bằng trình duyệt';
+                    lucide.createIcons();
+                    setTimeout(function() {
+                        btnObj.innerHTML = originalHTML;
+                        lucide.createIcons();
+                    }, 5000);
                 } else {
                     const link = document.createElement('a');
                     link.download = 'The_Tham_Du_Tot_Nghiep.png';
@@ -859,10 +908,13 @@
                     link.click();
                     document.body.removeChild(link);
                     showToast('<i data-lucide="check-circle" class="w-5 h-5 text-emerald-400"></i> Đã tải ảnh thành công!');
+                    btnObj.innerHTML = '<i data-lucide="check" class="w-5 h-5"></i> Đã tải xong!';
+                    lucide.createIcons();
+                    setTimeout(function() {
+                        btnObj.innerHTML = originalHTML;
+                        lucide.createIcons();
+                    }, 3000);
                 }
-
-                btnObj.innerHTML = '<i data-lucide="check" class="w-5 h-5"></i> Đã tải xong!';
-                lucide.createIcons(); setTimeout(() => { btnObj.innerHTML = originalHTML; lucide.createIcons(); }, 3000);
             }).catch(() => {
                 showToast('<i data-lucide="x-circle" class="w-5 h-5 text-rose-400"></i> Tải ảnh bị chặn. Hãy mở thiệp bằng Chrome/Safari rồi bấm tải lại nhé!');
                 btnObj.innerHTML = originalHTML; lucide.createIcons();
