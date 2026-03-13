@@ -11,7 +11,8 @@
     <!-- Bộ Font hỗ trợ Tiếng Việt chuẩn (NFC) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,600;1,700&family=Dancing+Script:wght@500;700&family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Dùng Playfair Display + Noto Serif + Montserrat, có subset tiếng Việt đầy đủ -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,900;1,400;1,600;1,700&family=Noto+Serif:ital,wght@0,400;0,700;1,400;1,700&family=Montserrat:wght@300;400;500;600;700&display=swap&subset=vietnamese" rel="stylesheet">
     
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -30,8 +31,9 @@
             -webkit-font-smoothing: antialiased;
         }
 
-        .font-serif { font-family: 'Playfair Display', serif; }
-        .font-script { font-family: 'Dancing Script', cursive; }
+        .font-serif { font-family: 'Noto Serif', 'Playfair Display', serif; }
+        /* Script dùng Noto Serif italic để hỗ trợ tốt tiếng Việt (ố, ế, ộ, ...) */
+        .font-script { font-family: 'Noto Serif', 'Playfair Display', serif; font-style: italic; }
         .font-sans { font-family: 'Montserrat', sans-serif; }
 
         #canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; }
@@ -262,7 +264,7 @@
                         <p class="font-serif italic text-lg text-slate-500 mb-1">Trân trọng kính mời</p>
                         <h2 id="guest-name-display" class="font-script text-[42px] md:text-[50px] font-bold text-slate-800 leading-tight mb-5 text-gradient-gold drop-shadow-sm px-2">Bạn thân mến</h2>
                         <div class="w-16 h-[1px] bg-amber-600/30 mb-5"></div>
-                        <p class="font-serif text-sm md:text-base text-slate-700 leading-relaxed px-2">đến tham dự buổi lễ<br><strong class="text-amber-700">Tốt Nghiệp Đại Học</strong><br>cùng với mình nhé!</p>
+                        <p class="font-serif text-sm md:text-base text-slate-700 leading-relaxed px-2">đến tham dự buổi lễ<br><strong class="text-amber-700">Tốt Nghiệp Đại Học</strong><br>cùng với <span id="sender-pronoun-inline">mình</span> nhé!</p>
                     </div>
                 </div>
 
@@ -339,7 +341,7 @@
                     <div id="question-2" class="w-full hidden flex-col items-center -mt-10">
                         <i data-lucide="heart-handshake" class="w-14 h-14 text-amber-500 mb-3 drop-shadow-md"></i>
                         <h2 class="font-serif text-2xl md:text-3xl font-bold text-slate-800 mb-2 text-center">Tuyệt vời quá!</h2>
-                        <p class="text-[13px] md:text-sm text-slate-600 text-center mb-8 px-2 leading-relaxed">Bạn có muốn để lại một lời chúc không?<br>Mình sẽ trân trọng lưu lại.</p>
+                        <p class="text-[13px] md:text-sm text-slate-600 text-center mb-8 px-2 leading-relaxed"><span id="recipient-pronoun-wish">Bạn</span> có muốn để lại một lời chúc không?<br><span id="sender-pronoun-wish">Mình</span> sẽ trân trọng lưu lại.</p>
                         <div id="wish-buttons" class="flex gap-4 w-full max-w-[280px]">
                             <button onclick="showWishForm()" class="flex-1 bg-gradient-gold text-white py-3.5 rounded-xl font-semibold shadow-lg shadow-amber-500/30 active:scale-95 transition-transform text-sm">Viết lời chúc</button>
                             <button onclick="changePage(1)" class="flex-1 glass-panel text-slate-600 py-3.5 rounded-xl font-semibold active:scale-95 transition-transform text-sm">Bỏ qua</button>
@@ -479,17 +481,49 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             const guestName = getGuestNameFromUrl();
+            const callLabel = getCallLabelFromUrl();
+            const senderPronoun = getSenderPronounFromUrl();
+
             if (guestName) {
                 const elCardName = document.getElementById('guest-name-display');
                 const elIntroName = document.getElementById('intro-guest-name');
                 const elTicketName = document.getElementById('ticket-guest-name');
 
                 window.__guestName = guestName;
+                window.__callLabel = callLabel || '';
 
-                if (elCardName) elCardName.textContent = guestName;
-                if (elIntroName) elIntroName.textContent = "Gửi " + guestName;
-                if (elTicketName) elTicketName.textContent = guestName;
+                // Dòng chữ script lớn ở TRANG 1
+                if (elCardName) {
+                    const scriptText = callLabel
+                        ? `${callLabel} ${guestName}`
+                        : guestName;
+                    elCardName.textContent = scriptText;
+                }
+
+                // Dòng intro nhỏ trên màn mở đầu
+                if (elIntroName) {
+                    if (callLabel) {
+                        elIntroName.textContent = `Gửi ${callLabel} ${guestName}`;
+                    } else {
+                        elIntroName.textContent = "Gửi " + guestName;
+                    }
+                }
+
+                // Recipient trên vé
+                if (elTicketName) {
+                    elTicketName.textContent = callLabel
+                        ? `${callLabel} ${guestName}`
+                        : guestName;
+                }
             }
+
+            // Đổi "mình/em" trong lời mời
+            const senderInline = document.getElementById('sender-pronoun-inline');
+            if (senderInline) senderInline.textContent = senderPronoun;
+            const senderWish = document.getElementById('sender-pronoun-wish');
+            if (senderWish) senderWish.textContent = senderPronoun === 'em' ? 'Em' : 'Mình';
+            const recipientWish = document.getElementById('recipient-pronoun-wish');
+            if (recipientWish) recipientWish.textContent = getRecipientPronounFromCallLabel(callLabel);
 
             // Nếu đang ở trình duyệt trong app (Messenger, Facebook, v.v.) thì hiện cảnh báo nhỏ
             const inAppBar = document.getElementById('inapp-warning');
@@ -521,6 +555,42 @@
             } catch {
                 return plusFixed.trim();
             }
+        }
+
+        // Lấy cách xưng hô từ params: ?xh=Anh%20Hai hoặc ?call=Ch%E1%BB%8B%20Hai
+        function getCallLabelFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const raw =
+                urlParams.get('xh') ||
+                urlParams.get('call') ||
+                urlParams.get('role') ||
+                urlParams.get('xungHo');
+            if (!raw) return '';
+            const plusFixed = raw.replace(/\+/g, ' ');
+            try {
+                return decodeURIComponent(plusFixed).trim();
+            } catch {
+                return plusFixed.trim();
+            }
+        }
+
+        // Lấy đại từ xưng "mình/em" từ params: ?xung=em (mặc định: "mình")
+        function getSenderPronounFromUrl() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const raw = urlParams.get('xung') || urlParams.get('from') || urlParams.get('sender');
+            const v = (raw || '').toLowerCase().trim();
+            if (v === 'em') return 'em';
+            return 'mình';
+        }
+
+        // Lấy đại từ gọi người nhận dựa trên xưng hô (?xh=Anh Hai/Chị Hai...)
+        function getRecipientPronounFromCallLabel(callLabel) {
+            const v = (callLabel || '').trim().toLowerCase();
+            if (!v) return 'Bạn';
+            if (v.startsWith('anh')) return 'Anh';
+            if (v.startsWith('chị') || v.startsWith('chi')) return 'Chị';
+            if (v.startsWith('em')) return 'Em';
+            return 'Bạn';
         }
 
         let currentPage = 0;
@@ -813,8 +883,14 @@
                 lucide.createIcons();
             }
 
+            const rawName = window.__guestName || getGuestNameFromUrl() || 'Khách mời';
+            const callLabel = window.__callLabel || getCallLabelFromUrl() || '';
+            const fullNameForSheet = callLabel ? `${callLabel} ${rawName}` : rawName;
+
             const payload = {
-                name: window.__guestName || getGuestNameFromUrl() || 'Khách mời',
+                name: fullNameForSheet,
+                rawName,
+                callLabel,
                 wish,
                 submittedAt: new Date().toISOString(),
                 pageUrl: window.location.href
